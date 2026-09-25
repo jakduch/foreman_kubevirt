@@ -218,8 +218,10 @@ module ForemanKubevirt
 
     def destroy_vm(vm_uuid)
       vm = find_vm_by_uuid(vm_uuid)
-      delete_pvcs(vm.volumes)
-      vm.destroy
+      volumes = vm.volumes
+      result = vm.destroy
+      delete_pvcs(volumes)
+      result
     rescue ActiveRecord::RecordNotFound
       true
     end

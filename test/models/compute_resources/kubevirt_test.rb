@@ -300,6 +300,41 @@ class ForemanKubevirtTest < ActiveSupport::TestCase
     end
   end
 
+  describe "destroy_vm" do
+    test "deletes managed PVCs only after deleting the VM" do
+      record = new_kubevirt_vcr
+      volumes = [stub]
+      order = []
+      vm = Object.new
+      vm.define_singleton_method(:volumes) { volumes }
+      vm.define_singleton_method(:destroy) do
+        order << :vm
+        true
+      end
+      record.stubs(:find_vm_by_uuid).returns(vm)
+      record.define_singleton_method(:delete_pvcs) do |actual_volumes|
+        raise 'unexpected volumes' unless actual_volumes.equal?(volumes)
+
+        order << :pvcs
+        true
+      end
+
+      assert record.destroy_vm('test')
+      assert_equal %i[vm pvcs], order
+    end
+
+    test "preserves managed PVCs when deleting the VM fails" do
+      record = new_kubevirt_vcr
+      vm = stub(:volumes => [stub])
+      vm.stubs(:destroy).raises(StandardError, 'VM deletion failed')
+      record.stubs(:find_vm_by_uuid).returns(vm)
+      record.expects(:delete_pvcs).never
+
+      error = assert_raises(StandardError) { record.destroy_vm('test') }
+      assert_equal 'VM deletion failed', error.message
+    end
+  end
+
   test "client lets fog discover the preferred KubeVirt API version" do
     record = new_kubevirt_vcr
     client = stub
