@@ -209,10 +209,10 @@ module ForemanKubevirt
         vm = client.servers.get(options[:name])
         update_userdata_secret_owner(userdata_secret, options[:name], vm.uid) if userdata_secret.present?
         vm
-      rescue Exception => e
+      rescue StandardError
         delete_pvcs(volumes) if volumes
         delete_userdata_secret(userdata_secret) if userdata_secret.present?
-        raise e
+        raise
       end
     end
 
@@ -465,14 +465,14 @@ module ForemanKubevirt
       volumes_attributes = options[:volumes_attributes]
       return [] if volumes_attributes.blank?
 
+      volumes = []
       validate_volume_capacity(volumes_attributes)
       validate_only_single_bootable_volume(volumes_attributes)
 
-      volumes = []
       vm_name = options[:name].gsub(/[._]+/, '-')
       volumes_attributes.each_with_index do |(_, v), index|
         # skip if this is a boot volume for image provisioning
-        next if image_provision && v[:bootable]
+        next if image_provision && v[:bootable] == "true"
         # Add PVC as volumes to the virtual machine
         pvc_name = vm_name + "-claim-" + (index + 1).to_s
         capacity = v[:capacity]
@@ -484,6 +484,9 @@ module ForemanKubevirt
       end
 
       volumes
+    rescue StandardError
+      delete_pvcs(volumes)
+      raise
     end
 
     # Creates volume elements for the VM based on provided parameters

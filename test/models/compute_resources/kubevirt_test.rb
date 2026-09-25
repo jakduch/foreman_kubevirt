@@ -104,6 +104,37 @@ class ForemanKubevirtTest < ActiveSupport::TestCase
       record.create_vm({ :name => "test", :provision_method => 'image', :image_id => "default/template", :volumes_attributes => { "0" => { :capacity => "10", :bootable => "true" } }, :interfaces_attributes => { "0" => { "cni_provider" => "multus", "network" => "default/network" } } })
     end
 
+    test "keeps an explicitly non-bootable data volume for image provisioning" do
+      record = new_kubevirt_vcr
+      client = mocked_client
+      record.stubs(:client).returns(client)
+
+      client.vms.expects(:create).with do |args|
+        assert_equal %w[dataVolume persistentVolumeClaim], args[:volumes].map(&:type)
+        assert_equal "test-claim-2", args[:volumes].last.info
+      end
+
+      record.create_vm({ :name => "test", :provision_method => 'image', :image_id => "default/template", :volumes_attributes => { "0" => { :capacity => "10", :bootable => "true" }, "1" => { :capacity => "5", :bootable => "false" } }, :interfaces_attributes => { "0" => { "cni_provider" => "multus", "network" => "default/network" } } })
+    end
+
+    test "removes PVCs created before a later PVC fails" do
+      record = new_kubevirt_vcr
+      client = mocked_client
+      record.stubs(:client).returns(client)
+      client.pvcs.stubs(:create).with do |args|
+        raise StandardError, 'second PVC failed' if args[:name] == 'test-claim-2'
+
+        true
+      end
+      client.pvcs.expects(:delete).with('test-claim-1').once
+      client.vms.expects(:create).never
+
+      error = assert_raises(StandardError) do
+        record.create_vm({ :name => "test", :volumes_attributes => { "0" => { :capacity => "10" }, "1" => { :capacity => "5" } }, :interfaces_attributes => { "0" => { "cni_provider" => "multus", "network" => "default/network" } } })
+      end
+      assert_equal 'second PVC failed', error.message
+    end
+
     test "raises an error for image based provisioning with only an extra data volume" do
       record = new_kubevirt_vcr
       client = mocked_client
