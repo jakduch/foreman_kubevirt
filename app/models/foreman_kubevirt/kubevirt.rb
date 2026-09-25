@@ -64,7 +64,18 @@ module ForemanKubevirt
     def validate_connectivity(options = {})
       return unless connection_properties_valid?
       return false if errors.any?
-      client&.valid? && client&.virt_supported?
+
+      unless client&.valid?
+        errors.add(:base, _('The Kubernetes API could not be reached'))
+        return false
+      end
+
+      unless client.virt_supported?
+        errors.add(:base, _('KubeVirt is not available on the compute resource'))
+        return false
+      end
+
+      true
     rescue StandardError => e
       if /401/.match?(e.message)
         errors.add(:base, _('The compute resource could not be authenticated'))

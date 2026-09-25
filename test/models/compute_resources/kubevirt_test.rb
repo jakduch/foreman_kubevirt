@@ -294,6 +294,29 @@ class ForemanKubevirtTest < ActiveSupport::TestCase
     record = new_kubevirt_vcr
     record.stubs(:client).returns(client)
     assert_not record.test_connection
+    assert_equal ['KubeVirt is not available on the compute resource'], record.errors[:base]
+  end
+
+  test "test_connection should fail if the Kubernetes API is unavailable" do
+    client = stub
+    client.stubs(:valid?).returns(false)
+    client.expects(:virt_supported?).never
+    record = new_kubevirt_vcr
+    record.stubs(:client).returns(client)
+
+    assert_not record.test_connection
+    assert_equal ['The Kubernetes API could not be reached'], record.errors[:base]
+  end
+
+  test "test_connection should succeed for a reachable KubeVirt API" do
+    client = stub
+    client.stubs(:valid?).returns(true)
+    client.stubs(:virt_supported?).returns(true)
+    record = new_kubevirt_vcr
+    record.stubs(:client).returns(client)
+
+    assert record.test_connection
+    assert_empty record.errors[:base]
   end
 
   test "Verify client raises StandardError exception" do
