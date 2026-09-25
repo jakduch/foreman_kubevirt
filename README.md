@@ -61,6 +61,8 @@ To verify that the installation was successful, go to Foreman, top bar **Adminis
 | --------------- | --------------:|  -------------------- |
 | >= 1.21.x       | ~> 0.1.x       |  v1alpha3             |
 
+The current development version uses the preferred KubeVirt API version advertised by the cluster API.
+
 ## Usage
 Go to **Infrastructure > Compute Resources** and click on **New Compute Resource**.
 Choose the **KubeVirt provider**, and fill in all the fields.

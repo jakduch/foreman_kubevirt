@@ -269,6 +269,24 @@ class ForemanKubevirtTest < ActiveSupport::TestCase
     end
   end
 
+  test "client lets fog discover the preferred KubeVirt API version" do
+    record = new_kubevirt_vcr
+    client = stub
+    expected_options = {
+      :kubevirt_hostname => record.hostname,
+      :kubevirt_port => record.api_port,
+      :kubevirt_namespace => record.namespace,
+      :kubevirt_token => record.token,
+      :kubevirt_log => record.logger,
+      :kubevirt_verify_ssl => true,
+      :kubevirt_ca_cert => record.ca_cert
+    }
+
+    Fog::Kubevirt::Compute.expects(:new).with(expected_options).returns(client)
+
+    assert_same client, record.send(:client)
+  end
+
   test "test_connection should fail if client does not support virt" do
     client = stub
     client.stubs(:virt_supported?).returns(false)
