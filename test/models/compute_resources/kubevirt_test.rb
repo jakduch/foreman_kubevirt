@@ -345,10 +345,10 @@ class ForemanKubevirtTest < ActiveSupport::TestCase
       :kubevirt_token => record.token,
       :kubevirt_log => record.logger,
       :kubevirt_verify_ssl => true,
-      :kubevirt_ca_cert => record.ca_cert
+      :kubevirt_ca_cert => record.ca_cert,
     }
 
-    Fog::Kubevirt::Compute.expects(:new).with(expected_options).returns(client)
+    Fog::Kubevirt::Compute.expects(:new).with(**expected_options).returns(client)
 
     assert_same client, record.send(:client)
   end
